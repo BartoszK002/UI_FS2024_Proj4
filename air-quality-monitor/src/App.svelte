@@ -38,6 +38,12 @@
   let mapContainer;
   let pollutionLayer;
   let currentMarker;
+  let weatherData = {
+    temp: null,
+    humidity: null,
+    windSpeed: null,
+    windDeg: null
+  };
 
   // Cache for recent searches
   let searchCache = new Map();
@@ -278,6 +284,76 @@
     }
   }
 
+  async function fetchAirQuality() {
+    try {
+      // Fetch current air quality, forecast, and weather data in parallel
+      const [currentResponse, forecastResponse, weatherResponse] = await Promise.all([
+        fetch(
+          `/api/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        ),
+        fetch(
+          `/api/data/2.5/air_pollution/forecast?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        ),
+        fetch(
+          `/api/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        )
+      ]);
+      
+      if (!currentResponse.ok || !weatherResponse.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      if (!forecastResponse.ok) {
+        throw new Error('Failed to fetch forecast data');
+      }
+
+      const [currentData, forecastDataResponse, weather] = await Promise.all([
+        currentResponse.json(),
+        forecastResponse.json(),
+        weatherResponse.json()
+      ]);
+      
+      if (!currentData.list || !currentData.list[0]) {
+        throw new Error('Invalid air quality data format');
+      }
+
+      // Process current data
+      const current = currentData.list[0];
+      currentAQI = convertOpenWeatherMapAQI(current.main.aqi);
+      pollutants = {
+        PM2_5: current.components.pm2_5,
+        PM10: current.components.pm10,
+        NO2: current.components.no2,
+        SO2: current.components.so2,
+        O3: current.components.o3,
+        CO: current.components.co
+      };
+
+      // Update weather data
+      weatherData = {
+        temp: weather.main.temp,
+        humidity: weather.main.humidity,
+        windSpeed: weather.wind.speed,
+        windDeg: weather.wind.deg
+      };
+
+      // Process forecast data for the chart
+      if (forecastDataResponse.list && forecastDataResponse.list.length > 0) {
+        forecastData = forecastDataResponse.list.slice(0, 24);
+        console.log('Forecast data:', forecastData); // Debug log
+        if (chartCanvas) {
+          updateChart(forecastData);
+        }
+      }
+
+      lastUpdateTime = new Date(currentData.list[0].dt * 1000);
+
+    } catch (err) {
+      console.error('Error fetching air quality data:', err);
+      error = 'Failed to fetch air quality data. Please try again later.';
+    }
+  }
+
   async function updateChart(data) {
     if (!chartCanvas) {
       console.warn('Chart canvas not available');
@@ -424,64 +500,6 @@
       console.log('Chart created successfully');
     } catch (err) {
       console.error('Error creating chart:', err);
-    }
-  }
-
-  async function fetchAirQuality() {
-    try {
-      // Fetch current air quality and forecast in parallel
-      const [currentResponse, forecastResponse] = await Promise.all([
-        fetch(
-          `/api/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
-        ),
-        fetch(
-          `/api/data/2.5/air_pollution/forecast?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
-        )
-      ]);
-      
-      if (!currentResponse.ok) {
-        throw new Error('Failed to fetch air quality data');
-      }
-
-      if (!forecastResponse.ok) {
-        throw new Error('Failed to fetch forecast data');
-      }
-
-      const [currentData, forecastDataResponse] = await Promise.all([
-        currentResponse.json(),
-        forecastResponse.json()
-      ]);
-      
-      if (!currentData.list || !currentData.list[0]) {
-        throw new Error('Invalid air quality data format');
-      }
-
-      // Process current data
-      const current = currentData.list[0];
-      currentAQI = convertOpenWeatherMapAQI(current.main.aqi); // Use the same conversion function
-      pollutants = {
-        PM2_5: current.components.pm2_5,
-        PM10: current.components.pm10,
-        NO2: current.components.no2,
-        SO2: current.components.so2,
-        O3: current.components.o3,
-        CO: current.components.co
-      };
-
-      // Process forecast data for the chart
-      if (forecastDataResponse.list && forecastDataResponse.list.length > 0) {
-        forecastData = forecastDataResponse.list.slice(0, 24);
-        console.log('Forecast data:', forecastData); // Debug log
-        if (chartCanvas) {
-          updateChart(forecastData);
-        }
-      }
-
-      lastUpdateTime = new Date(currentData.list[0].dt * 1000);
-
-    } catch (err) {
-      console.error('Error fetching air quality data:', err);
-      error = 'Failed to fetch air quality data. Please try again later.';
     }
   }
 
@@ -769,6 +787,12 @@
         ventilation: "Seal windows and doors, use air purification"
       };
     }
+  }
+
+  function getWindDirection(degrees) {
+    const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
+    const index = Math.round(((degrees % 360) / 22.5));
+    return directions[index % 16];
   }
 
   function formatLastUpdateTime(timestamp) {
@@ -1121,7 +1145,7 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400 text-center mb-2">Dominant Pollutant</div>
                 <div class="flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-500 mr-1.5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 011 1v3a1 1 0 11-2 0V6a1 1 0 011-1z" clip-rule="evenodd" />
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 011 1v3a1 1 0 11-2 0V6a1 1 0 011-1z" />
                   </svg>
                   <span class="font-medium text-gray-900 dark:text-dark-text">
                     {#if pollutants}
@@ -1298,21 +1322,85 @@
         </div>
       </div>
 
-      <!-- Recommendations -->
+      <!-- Air Quality Analysis -->
       <div class="mt-8 bg-white dark:bg-dark-secondary rounded-lg shadow-lg p-6 transition-colors duration-200">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-dark-text">Recommendations</h2>
-        <ul class="list-disc pl-6 space-y-2 text-gray-700 dark:text-dark-muted">
-          {#if currentAQI <= 50}
-            <li>Air quality is good! Perfect for outdoor activities.</li>
-          {:else if currentAQI <= 100}
-            <li>Sensitive individuals should consider reducing prolonged outdoor activities.</li>
-            <li>Keep windows closed during peak pollution hours.</li>
-          {:else}
-            <li>Avoid prolonged outdoor activities.</li>
-            <li>Use air purifiers indoors.</li>
-            <li>Wear a mask when outdoors if necessary.</li>
-          {/if}
-        </ul>
+        <h2 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-dark-text">Air Quality Analysis</h2>
+        
+        <!-- Pollutant Trends -->
+        <div class="mb-6">
+          <h3 class="text-lg font-medium mb-3 text-gray-900 dark:text-dark-text">Pollutant Trends</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {#if forecastData && forecastData.length > 0}
+              <!-- Peak Times -->
+              <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
+                <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Peak Pollution Times</h4>
+                <div class="text-sm text-gray-600 dark:text-dark-muted">
+                  {#if Math.max(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi))) > currentAQI}
+                    <p>AQI is expected to worsen in the next 24 hours.</p>
+                    <p class="mt-1">Peak AQI: {Math.max(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi)))}</p>
+                  {:else}
+                    <p>Air quality is expected to remain stable or improve.</p>
+                  {/if}
+                </div>
+              </div>
+
+              <!-- Best Times -->
+              <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
+                <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Best Air Quality Times</h4>
+                <div class="text-sm text-gray-600 dark:text-dark-muted">
+                  {#if Math.min(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi))) < currentAQI}
+                    <p>Better air quality expected at:</p>
+                    {#each forecastData.filter(d => convertOpenWeatherMapAQI(d.main.aqi) === Math.min(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi)))).slice(0, 1) as bestTime}
+                      <p class="mt-1">{new Date(bestTime.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    {/each}
+                  {:else}
+                    <p>Current time has the best air quality.</p>
+                  {/if}
+                </div>
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Weather Impact -->
+        <div>
+          <h3 class="text-lg font-medium mb-3 text-gray-900 dark:text-dark-text">Weather Impact</h3>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Current Weather -->
+            <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
+              <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Current Weather Conditions</h4>
+              {#if weatherData.temp !== null}
+                <div class="space-y-2 text-sm text-gray-600 dark:text-dark-muted">
+                  <p>Temperature: {weatherData.temp.toFixed(1)}°C</p>
+                  <p>Humidity: {weatherData.humidity}%</p>
+                  <p>Wind: {weatherData.windSpeed.toFixed(1)} m/s {getWindDirection(weatherData.windDeg)}</p>
+                </div>
+              {/if}
+            </div>
+
+            <!-- Weather Analysis -->
+            <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
+              <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Weather Impact Analysis</h4>
+              <div class="text-sm text-gray-600 dark:text-dark-muted">
+                {#if weatherData.windSpeed !== null}
+                  {#if weatherData.windSpeed < 2}
+                    <p>Low wind speeds may lead to pollutant accumulation.</p>
+                  {:else if weatherData.windSpeed > 5}
+                    <p>Strong winds are helping disperse pollutants.</p>
+                  {:else}
+                    <p>Moderate winds providing some pollutant dispersion.</p>
+                  {/if}
+                  
+                  {#if weatherData.humidity > 70}
+                    <p class="mt-1">High humidity may increase particle formation.</p>
+                  {:else if weatherData.humidity < 30}
+                    <p class="mt-1">Low humidity may increase dust suspension.</p>
+                  {/if}
+                {/if}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     {/if}
   </div>
