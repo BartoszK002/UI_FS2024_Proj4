@@ -5,12 +5,18 @@
   import L from 'leaflet';
 
   // Fix Leaflet's default icon path issues
-  delete L.Icon.Default.prototype._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  const defaultIcon = new L.Icon({
     iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
   });
+
+  // Set the default icon for all markers
+  L.Marker.prototype.options.icon = defaultIcon;
 
   // Component state
   let darkMode = false;
@@ -723,7 +729,7 @@
       'NO2': 25,
       'SO2': 40,
       'O3': 100,
-      'CO': 4000 // in μg/m³
+      'CO': 4000 // in ��g/m³
     };
     
     let maxRatio = 0;
@@ -799,7 +805,7 @@
     if (!timestamp) return '';
     const now = new Date();
     const updateTime = new Date(timestamp);
-    const diffMinutes = Math.floor((now - updateTime) / 1000 / 60);
+    const diffMinutes = Math.floor((now.getTime() - updateTime.getTime()) / 1000 / 60);
     
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes === 1) return '1 minute ago';
@@ -1033,9 +1039,9 @@
 </script>
 
 <main class="min-h-screen transition-colors duration-200 bg-white dark:bg-dark-primary">
-  <div class="container mx-auto px-4 py-8 max-w-4xl">
+  <div class="container mx-auto px-4 pt-2 pb-4 max-w-4xl">
     <!-- Theme Toggle Button -->
-    <div class="flex justify-end mb-4">
+    <div class="flex justify-end mb-1">
       <button
         on:click={toggleDarkMode}
         class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-dark-secondary transition-colors duration-200"
@@ -1138,6 +1144,36 @@
           </div>
 
           <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
+            <div class="text-sm font-medium mb-3 text-gray-900 dark:text-dark-text">AQI Scale:</div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-green-500 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">0-50: Good</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-yellow-500 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">51-100: Moderate</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-orange-500 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">101-150: Poor</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-red-500 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">151-200: Unhealthy</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-purple-500 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">201-300: Very Unhealthy</span>
+              </div>
+              <div class="flex items-center">
+                <div class="w-3 h-3 rounded bg-red-900 mr-2"></div>
+                <span class="text-gray-700 dark:text-dark-muted">300+: Hazardous</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
             <div class="text-sm font-medium mb-3 text-gray-900 dark:text-dark-text">Quick Stats:</div>
             <div class="grid grid-cols-2 gap-4">
               <!-- Dominant Pollutant -->
@@ -1213,36 +1249,6 @@
                 </div>
               </div>
             {/if}
-          </div>
-
-          <div class="border-t border-gray-200 dark:border-gray-700 mt-4 pt-4">
-            <div class="text-sm font-medium mb-3 text-gray-900 dark:text-dark-text">AQI Scale:</div>
-            <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-green-500 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">0-50: Good</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-yellow-500 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">51-100: Moderate</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-orange-500 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">101-150: Poor</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-red-500 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">151-200: Unhealthy</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-purple-500 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">201-300: Very Unhealthy</span>
-              </div>
-              <div class="flex items-center">
-                <div class="w-3 h-3 rounded bg-red-900 mr-2"></div>
-                <span class="text-gray-700 dark:text-dark-muted">300+: Hazardous</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1324,37 +1330,77 @@
 
       <!-- Air Quality Analysis -->
       <div class="mt-8 bg-white dark:bg-dark-secondary rounded-lg shadow-lg p-6 transition-colors duration-200">
-        <h2 class="text-2xl font-semibold mb-4 text-gray-900 dark:text-dark-text">Air Quality Analysis</h2>
+        <div class="flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path>
+          </svg>
+          <h2 class="text-2xl font-semibold text-gray-900 dark:text-dark-text">Air Quality Analysis</h2>
+        </div>
         
         <!-- Pollutant Trends -->
         <div class="mb-6">
-          <h3 class="text-lg font-medium mb-3 text-gray-900 dark:text-dark-text">Pollutant Trends</h3>
+          <div class="flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-dark-text">Pollutant Trends</h3>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {#if forecastData && forecastData.length > 0}
               <!-- Peak Times -->
-              <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
-                <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Peak Pollution Times</h4>
+              <div class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-700/40 rounded-lg p-4 border border-slate-200 dark:border-slate-600/30 transition-all duration-200 hover:shadow-md">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                  </svg>
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-dark-text">Peak Pollution Times</h4>
+                </div>
                 <div class="text-sm text-gray-600 dark:text-dark-muted">
                   {#if Math.max(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi))) > currentAQI}
-                    <p>AQI is expected to worsen in the next 24 hours.</p>
-                    <p class="mt-1">Peak AQI: {Math.max(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi)))}</p>
+                    <p class="flex items-center text-amber-600 dark:text-amber-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      AQI is expected to worsen in the next 24 hours.
+                    </p>
+                    <p class="mt-1 font-semibold">Peak AQI: {Math.max(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi)))}</p>
                   {:else}
-                    <p>Air quality is expected to remain stable or improve.</p>
+                    <p class="flex items-center text-emerald-600 dark:text-emerald-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Air quality is expected to remain stable or improve.
+                    </p>
                   {/if}
                 </div>
               </div>
 
               <!-- Best Times -->
-              <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
-                <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Best Air Quality Times</h4>
+              <div class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-700/40 rounded-lg p-4 border border-slate-200 dark:border-slate-600/30 transition-all duration-200 hover:shadow-md">
+                <div class="flex items-center mb-2">
+                  <svg class="w-5 h-5 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                  </svg>
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-dark-text">Best Air Quality Times</h4>
+                </div>
                 <div class="text-sm text-gray-600 dark:text-dark-muted">
                   {#if Math.min(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi))) < currentAQI}
-                    <p>Better air quality expected at:</p>
+                    <p class="flex items-center text-emerald-600 dark:text-emerald-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4z"></path>
+                      </svg>
+                      Better air quality expected at:
+                    </p>
                     {#each forecastData.filter(d => convertOpenWeatherMapAQI(d.main.aqi) === Math.min(...forecastData.map(d => convertOpenWeatherMapAQI(d.main.aqi)))).slice(0, 1) as bestTime}
-                      <p class="mt-1">{new Date(bestTime.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p class="mt-1 font-semibold">{new Date(bestTime.dt * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                     {/each}
                   {:else}
-                    <p>Current time has the best air quality.</p>
+                    <p class="flex items-center text-emerald-600 dark:text-emerald-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Current time has the best air quality.
+                    </p>
                   {/if}
                 </div>
               </div>
@@ -1364,37 +1410,92 @@
 
         <!-- Weather Impact -->
         <div>
-          <h3 class="text-lg font-medium mb-3 text-gray-900 dark:text-dark-text">Weather Impact</h3>
+          <div class="flex items-center justify-center mb-3">
+            <svg class="w-5 h-5 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+            </svg>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-dark-text">Weather Impact</h3>
+          </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <!-- Current Weather -->
-            <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
-              <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Current Weather Conditions</h4>
+            <div class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-700/40 rounded-lg p-4 border border-slate-200 dark:border-slate-600/30 transition-all duration-200 hover:shadow-md">
+              <div class="flex items-center mb-2">
+                <svg class="w-5 h-5 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"></path>
+                </svg>
+                <h4 class="text-sm font-medium text-gray-700 dark:text-dark-text">Current Weather Conditions</h4>
+              </div>
               {#if weatherData.temp !== null}
                 <div class="space-y-2 text-sm text-gray-600 dark:text-dark-muted">
-                  <p>Temperature: {weatherData.temp.toFixed(1)}°C</p>
-                  <p>Humidity: {weatherData.humidity}%</p>
-                  <p>Wind: {weatherData.windSpeed.toFixed(1)} m/s {getWindDirection(weatherData.windDeg)}</p>
+                  <p class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path>
+                    </svg>
+                    Temperature: {weatherData.temp.toFixed(1)}°C
+                  </p>
+                  <p class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                    </svg>
+                    Humidity: {weatherData.humidity}%
+                  </p>
+                  <p class="flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                    </svg>
+                    Wind: {weatherData.windSpeed.toFixed(1)} m/s {getWindDirection(weatherData.windDeg)}
+                  </p>
                 </div>
               {/if}
             </div>
 
             <!-- Weather Analysis -->
-            <div class="bg-gray-50 dark:bg-dark-primary rounded-lg p-4">
-              <h4 class="text-sm font-medium mb-2 text-gray-700 dark:text-dark-text">Weather Impact Analysis</h4>
+            <div class="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/40 dark:to-slate-700/40 rounded-lg p-4 border border-slate-200 dark:border-slate-600/30 transition-all duration-200 hover:shadow-md">
+              <div class="flex items-center mb-2">
+                <svg class="w-5 h-5 mr-2 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h4 class="text-sm font-medium text-gray-700 dark:text-dark-text">Weather Impact Analysis</h4>
+              </div>
               <div class="text-sm text-gray-600 dark:text-dark-muted">
                 {#if weatherData.windSpeed !== null}
                   {#if weatherData.windSpeed < 2}
-                    <p>Low wind speeds may lead to pollutant accumulation.</p>
+                    <p class="flex items-center text-amber-600 dark:text-amber-400 mb-1">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      Low wind speeds may lead to pollutant accumulation.
+                    </p>
                   {:else if weatherData.windSpeed > 5}
-                    <p>Strong winds are helping disperse pollutants.</p>
+                    <p class="flex items-center text-emerald-600 dark:text-emerald-400 mb-1">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                      </svg>
+                      Strong winds are helping disperse pollutants.
+                    </p>
                   {:else}
-                    <p>Moderate winds providing some pollutant dispersion.</p>
+                    <p class="flex items-center text-sky-600 dark:text-sky-400 mb-1">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                      </svg>
+                      Moderate winds providing some pollutant dispersion.
+                    </p>
                   {/if}
                   
                   {#if weatherData.humidity > 70}
-                    <p class="mt-1">High humidity may increase particle formation.</p>
+                    <p class="flex items-center text-amber-600 dark:text-amber-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      High humidity may increase particle formation.
+                    </p>
                   {:else if weatherData.humidity < 30}
-                    <p class="mt-1">Low humidity may increase dust suspension.</p>
+                    <p class="flex items-center text-amber-600 dark:text-amber-400">
+                      <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                      </svg>
+                      Low humidity may increase dust suspension.
+                    </p>
                   {/if}
                 {/if}
               </div>
