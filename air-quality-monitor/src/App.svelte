@@ -258,8 +258,12 @@
 
   async function fetchLocationName() {
     try {
+      const baseUrl = import.meta.env.PROD 
+        ? 'https://api.openweathermap.org/data/2.5'
+        : '/api/data/2.5';
+
       const response = await fetch(
-        `/api/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        `${baseUrl}/weather?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
       );
       if (!response.ok) {
         throw new Error('Failed to fetch location data');
@@ -267,8 +271,12 @@
       const data = await response.json();
       
       // Get state/region from additional API call
+      const geoBaseUrl = import.meta.env.PROD
+        ? 'https://api.openweathermap.org/geo/1.0'
+        : '/api/geo/1.0';
+
       const geoResponse = await fetch(
-        `/api/geo/1.0/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        `${geoBaseUrl}/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
       );
       if (!geoResponse.ok) {
         throw new Error('Failed to fetch detailed location data');
@@ -292,16 +300,20 @@
 
   async function fetchAirQuality() {
     try {
+      const baseUrl = import.meta.env.PROD 
+        ? 'https://api.openweathermap.org/data/2.5'
+        : '/api/data/2.5';
+
       // Fetch current air quality, forecast, and weather data in parallel
       const [currentResponse, forecastResponse, weatherResponse] = await Promise.all([
         fetch(
-          `/api/data/2.5/air_pollution?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+          `${baseUrl}/air_pollution?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
         ),
         fetch(
-          `/api/data/2.5/air_pollution/forecast?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+          `${baseUrl}/air_pollution/forecast?lat=${latitude}&lon=${longitude}&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
         ),
         fetch(
-          `/api/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+          `${baseUrl}/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
         )
       ]);
       
@@ -830,13 +842,17 @@
     isSearching = true;
     searchError = '';
     try {
+      const baseUrl = import.meta.env.PROD
+        ? 'https://api.openweathermap.org/geo/1.0'
+        : '/api/geo/1.0';
+
       let endpoint;
       // Check if input is a US zip code (5 digits)
       if (/^\d{5}$/.test(query)) {
-        endpoint = `https://api.openweathermap.org/geo/1.0/zip?zip=${query},US&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`;
+        endpoint = `${baseUrl}/zip?zip=${query},US&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`;
       } else {
         // For city searches, append a wildcard to help with partial matches
-        endpoint = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=10&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`;
+        endpoint = `${baseUrl}/direct?q=${encodeURIComponent(query)}&limit=10&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`;
       }
       
       const response = await fetch(endpoint);
@@ -847,7 +863,7 @@
         if (!/^\d{5}$/.test(query) && query.length >= 3) {
           const lenientQuery = query.slice(0, -1); // Remove last character for more lenient search
           const lenientResponse = await fetch(
-            `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(lenientQuery)}&limit=10&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+            `${baseUrl}/direct?q=${encodeURIComponent(lenientQuery)}&limit=10&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
           );
           const lenientData = await lenientResponse.json();
           
